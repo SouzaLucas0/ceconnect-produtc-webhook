@@ -16,6 +16,8 @@ import { ProductsModule } from './products/products.module';
         username: config.getOrThrow<string>('DB_USERNAME'),
         password: config.getOrThrow<string>('DB_PASSWORD'),
         database: config.getOrThrow<string>('DB_NAME'),
+        // Supabase exige conexão SSL
+        ssl: { rejectUnauthorized: false },
         autoLoadEntities: true,
         synchronize: config.get('NODE_ENV') !== 'production',
       }),
