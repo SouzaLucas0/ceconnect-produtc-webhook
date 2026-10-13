@@ -28,11 +28,11 @@ export class Product {
   valor: number;
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Tramontina' })
-  @Column({ length: 100, nullable: true })
+  @Column('varchar', { length: 100, nullable: true })
   marca: string | null;
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'PS-10-INOX' })
-  @Column({ length: 100, nullable: true })
+  @Column('varchar', { length: 100, nullable: true })
   referencia: string | null;
 
   @ApiProperty({ example: 120 })
