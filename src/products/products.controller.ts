@@ -25,6 +25,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SearchProductQueryDto } from './dto/search-product.query.dto';
+import { ProductSearchResultDto } from './dto/product-search-result.dto';
 import { Product } from './entities/product.entity';
 import { PasswordGuard } from '../common/guards/password.guard';
 
@@ -55,10 +56,11 @@ export class ProductsController {
   @Get('search')
   @UseGuards(PasswordGuard)
   @ApiQuery({ name: 'password', required: true })
-  @ApiQuery({ name: 'descricao', required: true, example: 'parafuso sextavado' })
-  @ApiOkResponse({ type: Product })
+  @ApiQuery({ name: 'cliente', required: true, example: 'Moto Peças Central Ltda' })
+  @ApiQuery({ name: 'descricao', required: true, example: 'pneu biz 125' })
+  @ApiOkResponse({ type: [ProductSearchResultDto] })
   findByDescription(@Query() query: SearchProductQueryDto) {
-    return this.productsService.findBestMatch(query.descricao);
+    return this.productsService.findBestMatch(query.descricao, query.cliente);
   }
 
   @Get(':id')

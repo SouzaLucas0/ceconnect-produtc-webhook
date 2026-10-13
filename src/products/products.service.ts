@@ -10,6 +10,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductSearchResultDto } from './dto/product-search-result.dto';
 
 @Injectable()
 export class ProductsService implements OnModuleInit {
@@ -64,35 +65,56 @@ export class ProductsService implements OnModuleInit {
   }
 
   /**
-   * Retorna o produto cuja descrição é mais parecida com o termo informado.
-   * Usa similarity (nome inteiro) e word_similarity (parte do nome).
+   * Busca, entre os produtos do cliente informado, a descrição mais parecida
+   * com o termo. Retorna todos os produtos desse cliente com a mesma descrição
+   * (ex.: pneus da Biz 125 de marcas diferentes), sem id, cliente e estoque.
    */
-  async findBestMatch(descricao: string): Promise<Product> {
-    this.logger.log(`Buscando produto semelhante a "${descricao}"`);
+  async findBestMatch(
+    descricao: string,
+    cliente: string,
+  ): Promise<ProductSearchResultDto[]> {
+    this.logger.log(`Buscando "${descricao}" para o cliente "${cliente}"`);
 
-    const [best] = await this.repo.query(
-      `SELECT id,
-              GREATEST(
-                similarity(descricao, $1::text),
-                word_similarity($1::text, descricao)
-              ) AS score
-         FROM products
-        ORDER BY score DESC
-        LIMIT 1`,
-      [descricao],
+    const rows = await this.repo.query(
+      `WITH scored AS (
+         SELECT descricao, valor, marca, referencia,
+                GREATEST(
+                  similarity(descricao, $1::text),
+                  word_similarity($1::text, descricao)
+                ) AS score
+           FROM products
+          WHERE lower(cliente) = lower($2::text)
+       ),
+       best AS (
+         SELECT descricao, score
+           FROM scored
+          ORDER BY score DESC
+          LIMIT 1
+       )
+       SELECT s.descricao, s.valor, s.marca, s.referencia, b.score
+         FROM scored s
+         JOIN best b ON s.descricao = b.descricao
+        ORDER BY s.valor ASC`,
+      [descricao, cliente],
     );
 
-    if (!best || Number(best.score) < this.MIN_SCORE) {
+    if (!rows.length || Number(rows[0].score) < this.MIN_SCORE) {
       this.logger.warn(
-        `Nenhum produto acima do limiar para "${descricao}" (score: ${best?.score ?? 'n/a'})`,
+        `Nenhum produto acima do limiar para "${descricao}" do cliente "${cliente}"`,
       );
-      throw new NotFoundException('Nenhum produto semelhante encontrado');
+      throw new NotFoundException('Nenhum produto semelhante encontrado para este cliente');
     }
 
     this.logger.log(
-      `Melhor correspondência para "${descricao}": ${best.id} (score: ${Number(best.score).toFixed(2)})`,
+      `${rows.length} produto(s) encontrado(s) para "${descricao}" (score: ${Number(rows[0].score).toFixed(2)})`,
     );
-    return this.findOne(best.id);
+
+    return rows.map((row) => ({
+      descricao: row.descricao,
+      valor: Number(row.valor),
+      marca: row.marca,
+      referencia: row.referencia,
+    }));
   }
 
   async update(id: string, dto: UpdateProductDto): Promise<Product> {

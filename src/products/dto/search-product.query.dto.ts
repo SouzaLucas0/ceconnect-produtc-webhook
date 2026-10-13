@@ -7,9 +7,14 @@ export class SearchProductQueryDto {
   @IsNotEmpty()
   password: string;
 
+  @ApiProperty({ description: 'Cliente dono dos produtos', example: 'Moto Peças Central Ltda' })
+  @IsString()
+  @IsNotEmpty()
+  cliente: string;
+
   @ApiProperty({
     description: 'Descrição (ou parte dela) do produto. Aceita nomes parecidos.',
-    example: 'parafuso sextavado',
+    example: 'pneu biz 125',
   })
   @IsString()
   @IsNotEmpty()
