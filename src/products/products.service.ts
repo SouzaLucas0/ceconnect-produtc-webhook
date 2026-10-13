@@ -17,6 +17,9 @@ export class ProductsService implements OnModuleInit {
   private readonly logger = new Logger(ProductsService.name);
   // Pontuação mínima (0 a 1) para considerar um produto como correspondente
   private readonly MIN_SCORE = 0.3;
+  // Similaridade mínima entre a descrição encontrada e as demais para agrupar
+  // variações do mesmo produto (marca, separadores como "/" ou espaço, etc.)
+  private readonly GROUP_MIN_SCORE = 0.6;
 
   constructor(
     @InjectRepository(Product)
@@ -66,8 +69,9 @@ export class ProductsService implements OnModuleInit {
 
   /**
    * Busca, entre os produtos do cliente informado, a descrição mais parecida
-   * com o termo. Retorna todos os produtos desse cliente com a mesma descrição
-   * (ex.: pneus da Biz 125 de marcas diferentes), sem id, cliente e estoque.
+   * com o termo. Depois retorna todos os produtos desse cliente cuja descrição
+   * é parecida com a melhor (ex.: "90/90-19" e "90 90 19", ou pneus da mesma
+   * moto de marcas diferentes), sem id, cliente e estoque.
    */
   async findBestMatch(
     descricao: string,
@@ -93,9 +97,10 @@ export class ProductsService implements OnModuleInit {
        )
        SELECT s.descricao, s.valor, s.marca, s.referencia, b.score
          FROM scored s
-         JOIN best b ON s.descricao = b.descricao
+         CROSS JOIN best b
+        WHERE similarity(s.descricao, b.descricao) >= $3::real
         ORDER BY s.valor ASC`,
-      [descricao, cliente],
+      [descricao, cliente, this.GROUP_MIN_SCORE],
     );
 
     if (!rows.length || Number(rows[0].score) < this.MIN_SCORE) {
