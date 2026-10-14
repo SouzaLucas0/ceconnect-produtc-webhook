@@ -47,10 +47,8 @@ export class ProductsController {
     return this.productsService.createMany(products);
   }
 
-  // Retorna a lista de produtos (mesmo resultado de GET /products)
+  // Retorna a lista de produtos (mesmo resultado de GET /products), sem senha
   @Post()
-  @UseGuards(PasswordGuard)
-  @ApiHeader({ name: 'x-password', description: 'Senha de acesso', required: true })
   @ApiOkResponse({ type: [Product] })
   list() {
     return this.productsService.findAll();
