@@ -57,13 +57,17 @@ export class ProductsController {
   @ApiOkResponse({ type: [Product] })
   list(@Req() req: Request, @Body() body: unknown) {
     // Log de depuração: mostra tudo que chegou na requisição.
-    // Senhas são mascaradas para não aparecerem no log.
-    const headers = { ...req.headers };
-    if (headers['x-password']) headers['x-password'] = '***';
-    if (headers['authorization']) headers['authorization'] = '***';
+    // Por padrão, senhas saem mascaradas. Para ver os valores reais, defina
+    // DEBUG_LOG_SECRETS=true no ambiente (e remova depois do teste).
+    const showSecrets = process.env.DEBUG_LOG_SECRETS === 'true';
+    const mask = (value: unknown) => (showSecrets ? value : '***');
+
+    const headers = { ...req.headers } as Record<string, unknown>;
+    if (headers['x-password']) headers['x-password'] = mask(headers['x-password']);
+    if (headers['authorization']) headers['authorization'] = mask(headers['authorization']);
 
     const query = { ...req.query } as Record<string, unknown>;
-    if (query.password) query.password = '***';
+    if (query.password) query.password = mask(query.password);
 
     this.logger.log(
       `POST /products recebido\n` +
