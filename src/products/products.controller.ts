@@ -34,16 +34,26 @@ import { PasswordGuard } from '../common/guards/password.guard';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Post()
+  // Cadastra um array de produtos
+  @Post('add')
   @UseGuards(PasswordGuard)
   @ApiHeader({ name: 'x-password', description: 'Senha de acesso', required: true })
   @ApiBody({ type: [CreateProductDto] })
   @ApiCreatedResponse({ type: [Product] })
-  create(
+  add(
     @Body(new ParseArrayPipe({ items: CreateProductDto }))
     products: CreateProductDto[],
   ) {
     return this.productsService.createMany(products);
+  }
+
+  // Retorna a lista de produtos (mesmo resultado de GET /products)
+  @Post()
+  @UseGuards(PasswordGuard)
+  @ApiHeader({ name: 'x-password', description: 'Senha de acesso', required: true })
+  @ApiOkResponse({ type: [Product] })
+  list() {
+    return this.productsService.findAll();
   }
 
   @Get()
