@@ -5,14 +5,17 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   Param,
   ParseArrayPipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiBody,
   ApiCreatedResponse,
@@ -32,6 +35,8 @@ import { PasswordGuard } from '../common/guards/password.guard';
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
+  private readonly logger = new Logger(ProductsController.name);
+
   constructor(private readonly productsService: ProductsService) {}
 
   // Cadastra um array de produtos
@@ -50,7 +55,25 @@ export class ProductsController {
   // Retorna a lista de produtos (mesmo resultado de GET /products), sem senha
   @Post()
   @ApiOkResponse({ type: [Product] })
-  list() {
+  list(@Req() req: Request, @Body() body: unknown) {
+    // Log de depuração: mostra tudo que chegou na requisição.
+    // Senhas são mascaradas para não aparecerem no log.
+    const headers = { ...req.headers };
+    if (headers['x-password']) headers['x-password'] = '***';
+    if (headers['authorization']) headers['authorization'] = '***';
+
+    const query = { ...req.query } as Record<string, unknown>;
+    if (query.password) query.password = '***';
+
+    this.logger.log(
+      `POST /products recebido\n` +
+        `ip: ${req.ip}\n` +
+        `url: ${req.originalUrl}\n` +
+        `query: ${JSON.stringify(query, null, 2)}\n` +
+        `headers: ${JSON.stringify(headers, null, 2)}\n` +
+        `body: ${JSON.stringify(body, null, 2)}`,
+    );
+
     return this.productsService.findAll();
   }
 
