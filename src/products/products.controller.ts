@@ -41,6 +41,31 @@ export class ProductsController {
 
   constructor(private readonly productsService: ProductsService) {}
 
+  // Log de depuração: mostra o que chegou na requisição.
+  // Por padrão, senhas saem mascaradas. Para ver os valores reais, defina
+  // DEBUG_LOG_SECRETS=true no ambiente (e remova depois do teste).
+  private logRequest(rota: string, req: Request, body: unknown) {
+    const showSecrets = process.env.DEBUG_LOG_SECRETS === 'true';
+    const mask = (value: unknown) => (showSecrets ? value : '***');
+
+    const headers = { ...req.headers } as Record<string, unknown>;
+    for (const campo of ['x-password', 'x-zpro-agent-secret', 'authorization']) {
+      if (headers[campo]) headers[campo] = mask(headers[campo]);
+    }
+
+    const query = { ...req.query } as Record<string, unknown>;
+    if (query.password) query.password = mask(query.password);
+
+    this.logger.log(
+      `${rota} recebido\n` +
+        `ip: ${req.ip}\n` +
+        `url: ${req.originalUrl}\n` +
+        `query: ${JSON.stringify(query, null, 2)}\n` +
+        `headers: ${JSON.stringify(headers, null, 2)}\n` +
+        `body: ${JSON.stringify(body, null, 2)}`,
+    );
+  }
+
   // Cadastra um array de produtos
   @Post('add')
   @UseGuards(PasswordGuard)
@@ -58,28 +83,7 @@ export class ProductsController {
   @Post()
   @ApiOkResponse({ type: [Product] })
   list(@Req() req: Request, @Body() body: unknown) {
-    // Log de depuração: mostra tudo que chegou na requisição.
-    // Por padrão, senhas saem mascaradas. Para ver os valores reais, defina
-    // DEBUG_LOG_SECRETS=true no ambiente (e remova depois do teste).
-    const showSecrets = process.env.DEBUG_LOG_SECRETS === 'true';
-    const mask = (value: unknown) => (showSecrets ? value : '***');
-
-    const headers = { ...req.headers } as Record<string, unknown>;
-    if (headers['x-password']) headers['x-password'] = mask(headers['x-password']);
-    if (headers['authorization']) headers['authorization'] = mask(headers['authorization']);
-
-    const query = { ...req.query } as Record<string, unknown>;
-    if (query.password) query.password = mask(query.password);
-
-    this.logger.log(
-      `POST /products recebido\n` +
-        `ip: ${req.ip}\n` +
-        `url: ${req.originalUrl}\n` +
-        `query: ${JSON.stringify(query, null, 2)}\n` +
-        `headers: ${JSON.stringify(headers, null, 2)}\n` +
-        `body: ${JSON.stringify(body, null, 2)}`,
-    );
-
+    this.logRequest('POST /products', req, body);
     return this.productsService.findAll();
   }
 
@@ -98,9 +102,11 @@ export class ProductsController {
   @ApiBody({ type: SearchProductBodyDto })
   @ApiOkResponse({ type: [ProductSearchResultDto] })
   search(
+    @Req() req: Request,
     @Query() query: SearchProductQueryDto,
     @Body() body: SearchProductBodyDto,
   ) {
+    this.logRequest('POST /products/search', req, body);
     return this.productsService.findBestMatch(body.args.consulta, query.cliente);
   }
 
