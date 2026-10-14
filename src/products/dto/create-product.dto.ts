@@ -10,15 +10,11 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiPropertyOptional({
-    example: 'Construtora Silva Ltda',
-    description: 'Obrigatório aqui, a menos que o cliente seja informado na URL',
-  })
-  @IsOptional()
+  @ApiProperty({ example: 'Construtora Silva Ltda' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(150)
-  cliente?: string;
+  cliente: string;
 
   @ApiProperty({ example: 'Parafuso sextavado 10mm inox' })
   @IsString()

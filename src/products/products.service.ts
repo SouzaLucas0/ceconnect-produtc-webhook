@@ -33,31 +33,17 @@ export class ProductsService implements OnModuleInit {
     this.logger.log('Extensão pg_trgm verificada/habilitada');
   }
 
-  async createMany(
-    dtos: CreateProductDto[],
-    clienteUrl?: string,
-  ): Promise<Product[]> {
+  async createMany(dtos: CreateProductDto[]): Promise<Product[]> {
     if (!dtos.length) {
       this.logger.warn('Tentativa de cadastro com lista vazia');
       throw new BadRequestException('Envie ao menos um produto');
     }
 
-    // Cliente da URL tem prioridade; senão, usa o de cada item
-    const items = dtos.map((dto, index) => {
-      const cliente = clienteUrl ?? dto.cliente;
-      if (!cliente) {
-        throw new BadRequestException(
-          `Produto ${index + 1} sem cliente: informe "cliente" na URL ou no item`,
-        );
-      }
-      return { ...dto, cliente };
-    });
-
-    this.logger.log(`Cadastrando ${items.length} produto(s)`);
+    this.logger.log(`Cadastrando ${dtos.length} produto(s)`);
 
     try {
       // save com array roda em uma única transação
-      const saved = await this.repo.save(this.repo.create(items));
+      const saved = await this.repo.save(this.repo.create(dtos));
       this.logger.log(`${saved.length} produto(s) cadastrado(s) com sucesso`);
       return saved;
     } catch (error) {

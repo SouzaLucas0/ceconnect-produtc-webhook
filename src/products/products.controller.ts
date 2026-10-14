@@ -25,7 +25,6 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SearchProductQueryDto } from './dto/search-product.query.dto';
-import { CreateProductQueryDto } from './dto/create-product.query.dto';
 import { ProductSearchResultDto } from './dto/product-search-result.dto';
 import { Product } from './entities/product.entity';
 import { PasswordGuard } from '../common/guards/password.guard';
@@ -37,22 +36,14 @@ export class ProductsController {
 
   @Post()
   @UseGuards(PasswordGuard)
-  @ApiQuery({ name: 'password', required: true, description: 'Senha de acesso' })
-  @ApiQuery({
-    name: 'cliente',
-    required: false,
-    description: 'Cliente de todos os itens (dispensa o campo "cliente" no body)',
-    example: 'Moto Peças Central Ltda',
-  })
-  @ApiHeader({ name: 'x-password', description: 'Alternativa à senha na URL' })
+  @ApiHeader({ name: 'x-password', description: 'Senha de acesso', required: true })
   @ApiBody({ type: [CreateProductDto] })
   @ApiCreatedResponse({ type: [Product] })
   create(
-    @Query() query: CreateProductQueryDto,
     @Body(new ParseArrayPipe({ items: CreateProductDto }))
     products: CreateProductDto[],
   ) {
-    return this.productsService.createMany(products, query.cliente);
+    return this.productsService.createMany(products);
   }
 
   @Get()
