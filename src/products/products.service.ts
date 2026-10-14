@@ -39,12 +39,28 @@ export class ProductsService implements OnModuleInit {
       throw new BadRequestException('Envie ao menos um produto');
     }
 
-    this.logger.log(`Cadastrando ${dtos.length} produto(s)`);
+    // Um mesmo cliente + código não pode aparecer duas vezes no mesmo lote
+    const keys = new Set<string>();
+    for (const dto of dtos) {
+      const key = `${dto.cliente}|${dto.codigo}`;
+      if (keys.has(key)) {
+        throw new BadRequestException(
+          `Produto duplicado no lote: cliente "${dto.cliente}", código "${dto.codigo}"`,
+        );
+      }
+      keys.add(key);
+    }
+
+    this.logger.log(`Cadastrando/atualizando ${dtos.length} produto(s)`);
 
     try {
-      // save com array roda em uma única transação
-      const saved = await this.repo.save(this.repo.create(dtos));
-      this.logger.log(`${saved.length} produto(s) cadastrado(s) com sucesso`);
+      // Upsert: cria se não existir (cliente + código), senão atualiza
+      await this.repo.upsert(this.repo.create(dtos), ['cliente', 'codigo']);
+
+      const saved = await this.repo.find({
+        where: dtos.map((dto) => ({ cliente: dto.cliente, codigo: dto.codigo })),
+      });
+      this.logger.log(`${saved.length} produto(s) gravado(s) com sucesso`);
       return saved;
     } catch (error) {
       this.logger.error('Erro ao cadastrar produtos', error.stack);

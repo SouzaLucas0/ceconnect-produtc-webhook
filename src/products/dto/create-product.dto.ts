@@ -16,6 +16,12 @@ export class CreateProductDto {
   @MaxLength(150)
   cliente: string;
 
+  @ApiProperty({ example: '000123', description: 'Código do produto no sistema do cliente' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  codigo: string;
+
   @ApiProperty({ example: 'Parafuso sextavado 10mm inox' })
   @IsString()
   @IsNotEmpty()

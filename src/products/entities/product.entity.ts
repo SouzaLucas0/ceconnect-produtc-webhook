@@ -1,7 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
+// Um produto é único por cliente + código (código do sistema do cliente)
 @Entity('products')
+@Unique(['cliente', 'codigo'])
 export class Product {
   @ApiProperty({ format: 'uuid' })
   @PrimaryGeneratedColumn('uuid')
@@ -10,6 +12,10 @@ export class Product {
   @ApiProperty({ example: 'Construtora Silva Ltda' })
   @Column({ length: 150 })
   cliente: string;
+
+  @ApiProperty({ example: '000123', description: 'Código do produto no sistema do cliente' })
+  @Column({ length: 50 })
+  codigo: string;
 
   @ApiProperty({ example: 'Parafuso sextavado 10mm inox' })
   @Column({ length: 255 })
