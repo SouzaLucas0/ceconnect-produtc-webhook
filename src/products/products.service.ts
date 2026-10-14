@@ -11,6 +11,7 @@ import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductSearchResultDto } from './dto/product-search-result.dto';
+import { expandirAbreviacoes, normalizarSql } from './abreviacoes';
 
 @Injectable()
 export class ProductsService implements OnModuleInit {
@@ -99,12 +100,16 @@ export class ProductsService implements OnModuleInit {
   ): Promise<ProductSearchResultDto[]> {
     this.logger.log(`Buscando "${descricao}" para o cliente "${cliente}"`);
 
+    // Abreviações (tras, diant, esq, dir) são expandidas dos dois lados
+    const consulta = expandirAbreviacoes(descricao);
+    const norm = normalizarSql('descricao');
+
     const rows = await this.repo.query(
       `WITH scored AS (
          SELECT descricao, valor, marca, referencia,
                 GREATEST(
-                  similarity(descricao, $1::text),
-                  word_similarity($1::text, descricao)
+                  similarity(${norm}, $1::text),
+                  word_similarity($1::text, ${norm})
                 ) AS score
            FROM products
           WHERE lower(cliente) = lower($2::text)
@@ -120,9 +125,9 @@ export class ProductsService implements OnModuleInit {
        SELECT s.descricao, s.valor, s.marca, s.referencia, b.score
          FROM scored s
          CROSS JOIN best b
-        WHERE similarity(s.descricao, b.descricao) >= $3::real
+        WHERE similarity(${normalizarSql('s.descricao')}, ${normalizarSql('b.descricao')}) >= $3::real
         ORDER BY s.valor ASC`,
-      [descricao, cliente, this.GROUP_MIN_SCORE],
+      [consulta, cliente, this.GROUP_MIN_SCORE],
     );
 
     if (!rows.length || Number(rows[0].score) < this.MIN_SCORE) {
