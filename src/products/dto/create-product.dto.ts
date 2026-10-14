@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -49,4 +50,9 @@ export class CreateProductDto {
   @IsInt()
   @Min(0)
   estoque: number;
+
+  @ApiPropertyOptional({ example: true, default: true, description: 'Padrão: true' })
+  @IsOptional()
+  @IsBoolean()
+  ativo?: boolean;
 }

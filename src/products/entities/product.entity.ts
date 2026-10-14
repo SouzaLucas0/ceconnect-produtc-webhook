@@ -44,4 +44,9 @@ export class Product {
   @ApiProperty({ example: 120 })
   @Column('int')
   estoque: number;
+
+  // Produtos inativos não aparecem na listagem nem na busca
+  @ApiProperty({ example: true })
+  @Column({ default: true })
+  ativo: boolean;
 }

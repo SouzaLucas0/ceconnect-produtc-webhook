@@ -12,5 +12,6 @@ CREATE TABLE IF NOT EXISTS products (
   marca       varchar(100),
   referencia  varchar(100),
   estoque     integer        NOT NULL,
+  ativo       boolean        NOT NULL DEFAULT true,
   CONSTRAINT products_cliente_codigo_key UNIQUE (cliente, codigo)
 );

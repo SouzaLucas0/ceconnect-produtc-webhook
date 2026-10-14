@@ -55,7 +55,8 @@ export class ProductsService implements OnModuleInit {
 
     try {
       // Upsert: cria se não existir (cliente + código), senão atualiza
-      await this.repo.upsert(this.repo.create(dtos), ['cliente', 'codigo']);
+      const items = dtos.map((dto) => ({ ...dto, ativo: dto.ativo ?? true }));
+      await this.repo.upsert(this.repo.create(items), ['cliente', 'codigo']);
 
       const saved = await this.repo.find({
         where: dtos.map((dto) => ({ cliente: dto.cliente, codigo: dto.codigo })),
@@ -69,7 +70,10 @@ export class ProductsService implements OnModuleInit {
   }
 
   async findAll(): Promise<Product[]> {
-    const products = await this.repo.find({ order: { descricao: 'ASC' } });
+    const products = await this.repo.find({
+      where: { ativo: true },
+      order: { descricao: 'ASC' },
+    });
     this.logger.debug(`Listagem retornou ${products.length} produto(s)`);
     return products;
   }
@@ -104,6 +108,7 @@ export class ProductsService implements OnModuleInit {
                 ) AS score
            FROM products
           WHERE lower(cliente) = lower($2::text)
+            AND ativo = true
        ),
        best AS (
          SELECT descricao, score
