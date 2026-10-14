@@ -109,6 +109,7 @@ export class ProductsService implements OnModuleInit {
            FROM products
           WHERE lower(cliente) = lower($2::text)
             AND ativo = true
+            AND estoque > 0
        ),
        best AS (
          SELECT descricao, score
