@@ -41,8 +41,15 @@ export class Product {
   @Column('varchar', { length: 100, nullable: true })
   referencia: string | null;
 
-  @ApiProperty({ example: 120 })
-  @Column('int')
+  @ApiProperty({ example: 2.5, description: 'Aceita fração' })
+  @Column('decimal', {
+    precision: 12,
+    scale: 3,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
   estoque: number;
 
   // Produtos inativos não aparecem na listagem nem na busca

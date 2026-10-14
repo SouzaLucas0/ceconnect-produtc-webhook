@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
-  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -46,8 +45,8 @@ export class CreateProductDto {
   @MaxLength(100)
   referencia?: string | null;
 
-  @ApiProperty({ example: 120 })
-  @IsInt()
+  @ApiProperty({ example: 2.5, description: 'Aceita fração (até 3 casas)' })
+  @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0)
   estoque: number;
 
