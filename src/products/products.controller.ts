@@ -28,9 +28,11 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SearchProductQueryDto } from './dto/search-product.query.dto';
+import { SearchProductBodyDto } from './dto/search-product.body.dto';
 import { ProductSearchResultDto } from './dto/product-search-result.dto';
 import { Product } from './entities/product.entity';
 import { PasswordGuard } from '../common/guards/password.guard';
+import { AgentSecretGuard } from '../common/guards/agent-secret.guard';
 
 @ApiTags('products')
 @Controller('products')
@@ -87,15 +89,19 @@ export class ProductsController {
     return this.productsService.findAll();
   }
 
-  // Declarada antes de ':id' para não ser interpretada como um id
-  @Get('search')
-  @UseGuards(PasswordGuard)
-  @ApiQuery({ name: 'password', required: true })
+  // Busca por semelhança. Senha no header x-zpro-agent-secret; cliente na URL;
+  // termo da busca em body.args.consulta
+  @Post('search')
+  @UseGuards(AgentSecretGuard)
+  @ApiHeader({ name: 'x-zpro-agent-secret', description: 'Senha de acesso', required: true })
   @ApiQuery({ name: 'cliente', required: true, example: 'Moto Peças Central Ltda' })
-  @ApiQuery({ name: 'descricao', required: true, example: 'pneu biz 125' })
+  @ApiBody({ type: SearchProductBodyDto })
   @ApiOkResponse({ type: [ProductSearchResultDto] })
-  findByDescription(@Query() query: SearchProductQueryDto) {
-    return this.productsService.findBestMatch(query.descricao, query.cliente);
+  search(
+    @Query() query: SearchProductQueryDto,
+    @Body() body: SearchProductBodyDto,
+  ) {
+    return this.productsService.findBestMatch(body.args.consulta, query.cliente);
   }
 
   @Get(':id')
