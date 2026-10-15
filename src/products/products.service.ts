@@ -22,11 +22,8 @@ const PALAVRAS_DE_LIGACAO = new Set([
 @Injectable()
 export class ProductsService implements OnModuleInit {
   private readonly logger = new Logger(ProductsService.name);
-  // Pontuação mínima (0 a 1) para considerar um produto como correspondente
-  private readonly MIN_SCORE = 0.3;
-  // Similaridade mínima entre a descrição encontrada e as demais para agrupar
-  // variações do mesmo produto (marca, separadores como "/" ou espaço, etc.)
-  private readonly GROUP_MIN_SCORE = 0.6;
+  // Máximo de produtos devolvidos por busca
+  private readonly LIMITE_RESULTADOS = 50;
 
   constructor(
     @InjectRepository(Product)
@@ -95,10 +92,10 @@ export class ProductsService implements OnModuleInit {
   }
 
   /**
-   * Busca, entre os produtos do cliente informado, a descrição mais parecida
-   * com o termo. Depois retorna todos os produtos desse cliente cuja descrição
-   * é parecida com a melhor (ex.: "90/90-19" e "90 90 19", ou pneus da mesma
-   * moto de marcas diferentes), sem id, cliente e estoque.
+   * Busca os produtos do cliente cuja descrição contém todas as palavras do
+   * termo (ex.: "pn tras biz"). Abreviações são expandidas nos dois lados e
+   * palavras de ligação são ignoradas. Só entram produtos ativos com estoque > 0.
+   * Retorna descrição, valor, marca e referência, do menor para o maior valor.
    */
   async findBestMatch(
     descricao: string,
@@ -115,44 +112,38 @@ export class ProductsService implements OnModuleInit {
       .filter((palavra) => palavra && !PALAVRAS_DE_LIGACAO.has(palavra))
       .join(' ');
     const consulta = semLigacoes || expandida;
-    const norm = normalizarSql('descricao');
-
-    const rows = await this.repo.query(
-      `WITH scored AS (
-         SELECT descricao, valor, marca, referencia,
-                GREATEST(
-                  similarity(${norm}, $1::text),
-                  word_similarity($1::text, ${norm})
-                ) AS score
-           FROM products
-          WHERE lower(cliente) = lower($2::text)
-            AND ativo = true
-            AND estoque > 0
-       ),
-       best AS (
-         SELECT descricao, score
-           FROM scored
-          ORDER BY score DESC
-          LIMIT 1
-       )
-       SELECT s.descricao, s.valor, s.marca, s.referencia, b.score
-         FROM scored s
-         CROSS JOIN best b
-        WHERE similarity(${normalizarSql('s.descricao')}, ${normalizarSql('b.descricao')}) >= $3::real
-        ORDER BY s.valor ASC`,
-      [consulta, cliente, this.GROUP_MIN_SCORE],
-    );
-
-    if (!rows.length || Number(rows[0].score) < this.MIN_SCORE) {
-      this.logger.warn(
-        `Nenhum produto acima do limiar para "${descricao}" do cliente "${cliente}"`,
-      );
+    const palavras = consulta.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    if (!palavras.length) {
       throw new NotFoundException('Nenhum produto semelhante encontrado para este cliente');
     }
 
-    this.logger.log(
-      `${rows.length} produto(s) encontrado(s) para "${descricao}" (score: ${Number(rows[0].score).toFixed(2)})`,
+    // Uma condição por palavra: a descrição normalizada precisa conter todas
+    const norm = normalizarSql('descricao');
+    const params: unknown[] = [cliente];
+    const condicoes = palavras.map((palavra) => {
+      // Escapa os curingas do LIKE (% e _) digitados pelo cliente
+      params.push(`%${palavra.replace(/[\\%_]/g, '\\$&')}%`);
+      return `${norm} LIKE $${params.length}`;
+    });
+
+    const rows = await this.repo.query(
+      `SELECT descricao, valor, marca, referencia
+         FROM products
+        WHERE lower(cliente) = lower($1::text)
+          AND ativo = true
+          AND estoque > 0
+          AND ${condicoes.join('\n          AND ')}
+        ORDER BY valor ASC
+        LIMIT ${this.LIMITE_RESULTADOS}`,
+      params,
     );
+
+    if (!rows.length) {
+      this.logger.warn(`Nenhum produto encontrado para "${descricao}" do cliente "${cliente}"`);
+      throw new NotFoundException('Nenhum produto semelhante encontrado para este cliente');
+    }
+
+    this.logger.log(`${rows.length} produto(s) encontrado(s) para "${descricao}"`);
 
     return rows.map((row) => ({
       descricao: row.descricao,
