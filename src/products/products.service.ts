@@ -11,7 +11,6 @@ import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductSearchResultDto } from './dto/product-search-result.dto';
-import { expandirAbreviacoes, normalizarSql } from './abreviacoes';
 
 // Palavras que não ajudam a identificar um produto e são ignoradas na busca
 const PALAVRAS_DE_LIGACAO = new Set([
@@ -93,9 +92,15 @@ export class ProductsService implements OnModuleInit {
 
   /**
    * Busca os produtos do cliente cuja descrição contém todas as palavras do
+<<<<<<< HEAD
    * termo (ex.: "pn tras biz"). Abreviações são expandidas nos dois lados e
    * palavras de ligação são ignoradas. Só entram produtos ativos com estoque > 0.
    * Retorna descrição, valor, marca e código, do menor para o maior valor.
+=======
+   * termo (ex.: "pn tras biz"). Palavras de ligação são ignoradas e as
+   * abreviações ficam por conta do agente. Só entram produtos ativos com estoque > 0.
+   * Retorna descrição, valor, marca e referência, do menor para o maior valor.
+>>>>>>> origin/main
    */
   async findBestMatch(
     descricao: string,
@@ -103,10 +108,9 @@ export class ProductsService implements OnModuleInit {
   ): Promise<ProductSearchResultDto[]> {
     this.logger.log(`Buscando "${descricao}" para o cliente "${cliente}"`);
 
-    // Abreviações (tras, diant, esq, dir) são expandidas dos dois lados.
     // Palavras de ligação (da, de, do...) são removidas da consulta, porque
     // normalmente não aparecem nas descrições cadastradas.
-    const expandida = expandirAbreviacoes(descricao);
+    const expandida = descricao.toLowerCase();
     const semLigacoes = expandida
       .split(/\s+/)
       .filter((palavra) => palavra && !PALAVRAS_DE_LIGACAO.has(palavra))
@@ -118,7 +122,7 @@ export class ProductsService implements OnModuleInit {
     }
 
     // Uma condição por palavra: a descrição normalizada precisa conter todas
-    const norm = normalizarSql('descricao');
+    const norm = 'lower(descricao)';
     const params: unknown[] = [cliente];
     const condicoes = palavras.map((palavra) => {
       // Escapa os curingas do LIKE (% e _) digitados pelo cliente
