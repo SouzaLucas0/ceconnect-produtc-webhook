@@ -95,7 +95,7 @@ export class ProductsService implements OnModuleInit {
    * Busca os produtos do cliente cuja descrição contém todas as palavras do
    * termo (ex.: "pn tras biz"). Abreviações são expandidas nos dois lados e
    * palavras de ligação são ignoradas. Só entram produtos ativos com estoque > 0.
-   * Retorna descrição, valor, marca e referência, do menor para o maior valor.
+   * Retorna descrição, valor, marca e código, do menor para o maior valor.
    */
   async findBestMatch(
     descricao: string,
@@ -127,7 +127,7 @@ export class ProductsService implements OnModuleInit {
     });
 
     const rows = await this.repo.query(
-      `SELECT descricao, valor, marca, referencia
+      `SELECT descricao, valor, marca, codigo
          FROM products
         WHERE lower(cliente) = lower($1::text)
           AND ativo = true
@@ -149,7 +149,7 @@ export class ProductsService implements OnModuleInit {
       descricao: row.descricao,
       valor: Number(row.valor),
       marca: row.marca,
-      referencia: row.referencia,
+      codigo: row.codigo,
     }));
   }
 

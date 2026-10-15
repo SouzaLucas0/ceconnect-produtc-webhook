@@ -11,6 +11,6 @@ export class ProductSearchResultDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Pirelli' })
   marca: string | null;
 
-  @ApiPropertyOptional({ type: String, nullable: true, example: 'SL-90-17' })
-  referencia: string | null;
+  @ApiProperty({ example: '01-000123' })
+  codigo: string;
 }
