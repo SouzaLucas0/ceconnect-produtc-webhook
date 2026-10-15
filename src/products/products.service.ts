@@ -13,6 +13,12 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductSearchResultDto } from './dto/product-search-result.dto';
 import { expandirAbreviacoes, normalizarSql } from './abreviacoes';
 
+// Palavras que não ajudam a identificar um produto e são ignoradas na busca
+const PALAVRAS_DE_LIGACAO = new Set([
+  'a', 'o', 'as', 'os', 'e', 'de', 'da', 'do', 'das', 'dos',
+  'em', 'na', 'no', 'nas', 'nos', 'para', 'pra', 'pro', 'com', 'um', 'uma',
+]);
+
 @Injectable()
 export class ProductsService implements OnModuleInit {
   private readonly logger = new Logger(ProductsService.name);
@@ -100,8 +106,15 @@ export class ProductsService implements OnModuleInit {
   ): Promise<ProductSearchResultDto[]> {
     this.logger.log(`Buscando "${descricao}" para o cliente "${cliente}"`);
 
-    // Abreviações (tras, diant, esq, dir) são expandidas dos dois lados
-    const consulta = expandirAbreviacoes(descricao);
+    // Abreviações (tras, diant, esq, dir) são expandidas dos dois lados.
+    // Palavras de ligação (da, de, do...) são removidas da consulta, porque
+    // normalmente não aparecem nas descrições cadastradas.
+    const expandida = expandirAbreviacoes(descricao);
+    const semLigacoes = expandida
+      .split(/\s+/)
+      .filter((palavra) => palavra && !PALAVRAS_DE_LIGACAO.has(palavra))
+      .join(' ');
+    const consulta = semLigacoes || expandida;
     const norm = normalizarSql('descricao');
 
     const rows = await this.repo.query(
