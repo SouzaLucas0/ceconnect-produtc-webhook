@@ -92,15 +92,9 @@ export class ProductsService implements OnModuleInit {
 
   /**
    * Busca os produtos do cliente cuja descrição contém todas as palavras do
-<<<<<<< HEAD
    * termo (ex.: "pn tras biz"). Abreviações são expandidas nos dois lados e
    * palavras de ligação são ignoradas. Só entram produtos ativos com estoque > 0.
    * Retorna descrição, valor, marca e código, do menor para o maior valor.
-=======
-   * termo (ex.: "pn tras biz"). Palavras de ligação são ignoradas e as
-   * abreviações ficam por conta do agente. Só entram produtos ativos com estoque > 0.
-   * Retorna descrição, valor, marca e referência, do menor para o maior valor.
->>>>>>> origin/main
    */
   async findBestMatch(
     descricao: string,
