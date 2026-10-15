@@ -100,7 +100,10 @@ export class ProductsController {
   @ApiHeader({ name: 'x-zpro-agent-secret', description: 'Senha de acesso', required: true })
   @ApiQuery({ name: 'cliente', required: true, example: 'Moto Peças Central Ltda' })
   @ApiBody({ type: SearchProductBodyDto })
-  @ApiOkResponse({ type: [ProductSearchResultDto] })
+  @ApiOkResponse({
+    type: [ProductSearchResultDto],
+    description: 'Lista de produtos encontrados. Lista vazia quando nenhum produto corresponde à busca.',
+  })
   search(
     @Req() req: Request,
     @Query() query: SearchProductQueryDto,

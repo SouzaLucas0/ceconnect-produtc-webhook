@@ -114,7 +114,7 @@ export class ProductsService implements OnModuleInit {
     const consulta = semLigacoes || expandida;
     const palavras = consulta.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
     if (!palavras.length) {
-      throw new NotFoundException('Nenhum produto semelhante encontrado para este cliente');
+      return [];
     }
 
     // Uma condição por palavra: a descrição normalizada precisa conter todas
@@ -140,7 +140,7 @@ export class ProductsService implements OnModuleInit {
 
     if (!rows.length) {
       this.logger.warn(`Nenhum produto encontrado para "${descricao}" do cliente "${cliente}"`);
-      throw new NotFoundException('Nenhum produto semelhante encontrado para este cliente');
+      return [];
     }
 
     this.logger.log(`${rows.length} produto(s) encontrado(s) para "${descricao}"`);
