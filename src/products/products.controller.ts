@@ -79,12 +79,16 @@ export class ProductsController {
     return this.productsService.createMany(products);
   }
 
-  // Retorna a lista de produtos (mesmo resultado de GET /products), sem senha
+  // Lista os produtos ativos do cliente. Senha no header x-zpro-agent-secret;
+  // cliente na URL
   @Post()
+  @UseGuards(AgentSecretGuard)
+  @ApiHeader({ name: 'x-zpro-agent-secret', description: 'Senha de acesso', required: true })
+  @ApiQuery({ name: 'cliente', required: true, example: 'Moto Peças Central Ltda' })
   @ApiOkResponse({ type: [Product] })
-  list(@Req() req: Request, @Body() body: unknown) {
-    this.logRequest('POST /products', req, body);
-    return this.productsService.findAll();
+  list(@Req() req: Request, @Query() query: SearchProductQueryDto) {
+    this.logRequest('POST /products', req, undefined);
+    return this.productsService.findAllByCliente(query.cliente);
   }
 
   @Get()

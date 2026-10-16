@@ -81,6 +81,18 @@ export class ProductsService implements OnModuleInit {
     return products;
   }
 
+  // Produtos ativos de um cliente, ordenados por descrição
+  async findAllByCliente(cliente: string): Promise<Product[]> {
+    const products = await this.repo
+      .createQueryBuilder('p')
+      .where('lower(p.cliente) = lower(:cliente)', { cliente })
+      .andWhere('p.ativo = true')
+      .orderBy('p.descricao', 'ASC')
+      .getMany();
+    this.logger.debug(`Listagem do cliente "${cliente}" retornou ${products.length} produto(s)`);
+    return products;
+  }
+
   async findOne(id: string): Promise<Product> {
     const product = await this.repo.findOneBy({ id });
     if (!product) {
