@@ -91,10 +91,14 @@ export class ProductsController {
     return this.productsService.findAllByCliente(query.cliente);
   }
 
+  // Lista os produtos com estoque do cliente. Senha e cliente na URL
   @Get()
+  @UseGuards(QueryPasswordGuard)
+  @ApiQuery({ name: 'password', required: true, description: 'Senha de acesso' })
+  @ApiQuery({ name: 'cliente', required: true, example: 'Moto Peças Central Ltda' })
   @ApiOkResponse({ type: [Product] })
-  findAll() {
-    return this.productsService.findAll();
+  findAll(@Query() query: SearchProductQueryDto) {
+    return this.productsService.findAllByCliente(query.cliente);
   }
 
   // Busca por semelhança. Senha no header x-zpro-agent-secret; cliente na URL;
