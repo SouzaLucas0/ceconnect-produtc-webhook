@@ -33,6 +33,7 @@ import { ProductSearchResultDto } from './dto/product-search-result.dto';
 import { Product } from './entities/product.entity';
 import { PasswordGuard } from '../common/guards/password.guard';
 import { AgentSecretGuard } from '../common/guards/agent-secret.guard';
+import { QueryPasswordGuard } from '../common/guards/query-password.guard';
 
 @ApiTags('products')
 @Controller('products')
@@ -79,11 +80,10 @@ export class ProductsController {
     return this.productsService.createMany(products);
   }
 
-  // Lista os produtos ativos do cliente. Senha no header x-zpro-agent-secret;
-  // cliente na URL
+  // Lista os produtos com estoque do cliente. Senha e cliente na URL
   @Post()
-  @UseGuards(AgentSecretGuard)
-  @ApiHeader({ name: 'x-zpro-agent-secret', description: 'Senha de acesso', required: true })
+  @UseGuards(QueryPasswordGuard)
+  @ApiQuery({ name: 'password', required: true, description: 'Senha de acesso' })
   @ApiQuery({ name: 'cliente', required: true, example: 'Moto Peças Central Ltda' })
   @ApiOkResponse({ type: [Product] })
   list(@Req() req: Request, @Query() query: SearchProductQueryDto) {
