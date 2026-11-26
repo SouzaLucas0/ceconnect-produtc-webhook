@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
 // Um produto é único por cliente + código (código do sistema do cliente)
 @Entity('products')
 @Unique(['cliente', 'codigo'])
+@Index('products_cliente_medida_idx', ['cliente', 'medida'])
 export class Product {
   @ApiProperty({ format: 'uuid' })
   @PrimaryGeneratedColumn('uuid')
@@ -40,6 +41,11 @@ export class Product {
   @ApiPropertyOptional({ type: String, nullable: true, example: 'PS-10-INOX' })
   @Column('varchar', { length: 100, nullable: true })
   referencia: string | null;
+
+  // Medida do pneu normalizada (ex.: "90/90-17"), calculada a partir da descrição
+  @ApiPropertyOptional({ type: String, nullable: true, example: '90/90-17' })
+  @Column('varchar', { length: 20, nullable: true })
+  medida: string | null;
 
   @ApiProperty({ example: 2.5, description: 'Aceita fração' })
   @Column('decimal', {
