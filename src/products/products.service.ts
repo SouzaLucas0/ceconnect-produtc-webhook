@@ -11,12 +11,8 @@ import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductSearchResultDto } from './dto/product-search-result.dto';
-
-// Palavras que não ajudam a identificar um produto e são ignoradas na busca
-const PALAVRAS_DE_LIGACAO = new Set([
-  'a', 'o', 'as', 'os', 'e', 'de', 'da', 'do', 'das', 'dos',
-  'em', 'na', 'no', 'nas', 'nos', 'para', 'pra', 'pro', 'com', 'um', 'uma',
-]);
+import { normalizarMedida } from './medida';
+import { montarConsultaBusca } from './busca';
 
 @Injectable()
 export class ProductsService implements OnModuleInit {
@@ -30,10 +26,43 @@ export class ProductsService implements OnModuleInit {
     private readonly dataSource: DataSource,
   ) {}
 
-  // Habilita a extensão pg_trgm, usada na busca por semelhança
+  // Habilita a extensão pg_trgm, cria a coluna de medida (em produção o
+  // synchronize fica desligado) e preenche a medida dos produtos já cadastrados
   async onModuleInit() {
     await this.dataSource.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
-    this.logger.log('Extensão pg_trgm verificada/habilitada');
+    await this.dataSource.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS medida varchar(20)');
+    await this.dataSource.query(
+      'CREATE INDEX IF NOT EXISTS products_cliente_medida_idx ON products (cliente, medida)',
+    );
+    this.logger.log('Extensão pg_trgm e coluna medida verificadas');
+
+    try {
+      await this.preencherMedidas();
+    } catch (error) {
+      this.logger.error('Erro ao preencher a medida dos produtos', error.stack);
+    }
+  }
+
+  // Preenche a medida dos produtos que ainda não têm, a partir da descrição
+  private async preencherMedidas(): Promise<void> {
+    const pendentes: { id: string; descricao: string }[] = await this.dataSource.query(
+      'SELECT id, descricao FROM products WHERE medida IS NULL',
+    );
+
+    let preenchidos = 0;
+    for (const produto of pendentes) {
+      const medida = normalizarMedida(produto.descricao);
+      if (!medida) continue;
+      await this.dataSource.query('UPDATE products SET medida = $1 WHERE id = $2', [
+        medida,
+        produto.id,
+      ]);
+      preenchidos++;
+    }
+
+    if (preenchidos) {
+      this.logger.log(`Medida preenchida em ${preenchidos} produto(s)`);
+    }
   }
 
   async createMany(dtos: CreateProductDto[]): Promise<Product[]> {
@@ -58,7 +87,11 @@ export class ProductsService implements OnModuleInit {
 
     try {
       // Upsert: cria se não existir (cliente + código), senão atualiza
-      const items = dtos.map((dto) => ({ ...dto, ativo: dto.ativo ?? true }));
+      const items = dtos.map((dto) => ({
+        ...dto,
+        ativo: dto.ativo ?? true,
+        medida: normalizarMedida(dto.descricao),
+      }));
       await this.repo.upsert(this.repo.create(items), ['cliente', 'codigo']);
 
       const saved = await this.repo.find({
@@ -105,9 +138,10 @@ export class ProductsService implements OnModuleInit {
 
   /**
    * Busca os produtos do cliente cuja descrição contém todas as palavras do
-   * termo (ex.: "pn tras biz"). Abreviações são expandidas nos dois lados e
-   * palavras de ligação são ignoradas. Só entram produtos ativos com estoque > 0.
-   * Retorna descrição, valor, marca e código, do menor para o maior valor.
+   * termo (ex.: "pn tras biz") e, quando há, a mesma medida de pneu
+   * (ex.: "17-90/90"). Palavras de ligação são ignoradas. Só entram produtos
+   * ativos com estoque > 0. Retorna descrição, valor, marca e código, do menor
+   * para o maior valor.
    */
   async findBestMatch(
     descricao: string,
@@ -115,39 +149,12 @@ export class ProductsService implements OnModuleInit {
   ): Promise<ProductSearchResultDto[]> {
     this.logger.log(`Buscando "${descricao}" para o cliente "${cliente}"`);
 
-    // Palavras de ligação (da, de, do...) são removidas da consulta, porque
-    // normalmente não aparecem nas descrições cadastradas.
-    const expandida = descricao.toLowerCase();
-    const semLigacoes = expandida
-      .split(/\s+/)
-      .filter((palavra) => palavra && !PALAVRAS_DE_LIGACAO.has(palavra))
-      .join(' ');
-    const consulta = semLigacoes || expandida;
-    const palavras = consulta.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-    if (!palavras.length) {
+    const busca = montarConsultaBusca(descricao, cliente, this.LIMITE_RESULTADOS);
+    if (!busca) {
       return [];
     }
 
-    // Uma condição por palavra: a descrição normalizada precisa conter todas
-    const norm = 'lower(descricao)';
-    const params: unknown[] = [cliente];
-    const condicoes = palavras.map((palavra) => {
-      // Escapa os curingas do LIKE (% e _) digitados pelo cliente
-      params.push(`%${palavra.replace(/[\\%_]/g, '\\$&')}%`);
-      return `${norm} LIKE $${params.length}`;
-    });
-
-    const rows = await this.repo.query(
-      `SELECT descricao, valor, marca, codigo
-         FROM products
-        WHERE lower(cliente) = lower($1::text)
-          AND ativo = true
-          AND estoque > 0
-          AND ${condicoes.join('\n          AND ')}
-        ORDER BY valor ASC
-        LIMIT ${this.LIMITE_RESULTADOS}`,
-      params,
-    );
+    const rows = await this.repo.query(busca.sql, busca.params);
 
     if (!rows.length) {
       this.logger.warn(`Nenhum produto encontrado para "${descricao}" do cliente "${cliente}"`);
@@ -167,6 +174,8 @@ export class ProductsService implements OnModuleInit {
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     const product = await this.findOne(id);
     Object.assign(product, dto);
+    // A medida acompanha a descrição, que pode ter mudado
+    product.medida = normalizarMedida(product.descricao);
     const updated = await this.repo.save(product);
     this.logger.log(`Produto ${id} atualizado`);
     return updated;

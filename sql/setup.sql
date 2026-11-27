@@ -11,7 +11,11 @@ CREATE TABLE IF NOT EXISTS products (
   valor       numeric(12,2)  NOT NULL,
   marca       varchar(100),
   referencia  varchar(100),
+  medida      varchar(20),
   estoque     numeric(12,3)  NOT NULL,
   ativo       boolean        NOT NULL DEFAULT true,
   CONSTRAINT products_cliente_codigo_key UNIQUE (cliente, codigo)
 );
+
+-- Medida do pneu normalizada (ex.: "90/90-17"), preenchida a partir da descrição
+CREATE INDEX IF NOT EXISTS products_cliente_medida_idx ON products (cliente, medida);
